@@ -114,7 +114,7 @@ class Validator(BaseValidatorNeuron):
         self.logger.info("Starting miner gradient download loop")
 
         if self.master:
-        actual_value = self.metagraph.n
+            actual_value = self.metagraph.n
             self.logger.info(f"DEBUG: type(self.metagraph.n) = {type(actual_value)}")
             self.logger.info(f"DEBUG: self.metagraph.n = {actual_value}")
             self.logger.info(f"DEBUG: repr(self.metagraph.n) = {repr(actual_value)}")            
