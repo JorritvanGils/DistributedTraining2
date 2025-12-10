@@ -110,18 +110,23 @@ class Validator(BaseValidatorNeuron):
         if self.master:
             map_uid_to_peerid(self)
             self.logger.info(f"self.uid_tracker.keys(): {self.uid_tracker.keys()} (from map_uid_to_peerid())")
-            self.logger.info(f"self.metagraph: {self.metagraph}")
-            self.logger.info(f"self.metagraph.n: {self.metagraph.n}")
         
         self.logger.info("Starting miner gradient download loop")
 
+        if self.master:
+            self.logger.info(f"self.metagraph: {self.metagraph}")
+            self.logger.info(f"self.metagraph.n: {self.metagraph.n}")
+            metagraph_n_tensor = torch.tensor([self.metagraph.n], dtype=torch.int32, device="cpu")
+        else:
+            metagraph_n_tensor = torch.tensor([0], dtype=torch.int32, device="cpu")
 
+        dist.broadcast(metagraph_n_tensor, src=0, group=self.gloo_group)
+        self.metagraph_n = metagraph_n_tensor[0].item()
+        self.logger.info(f"All ranks: self.metagraph_n = {self.metagraph_n}")
 
-
-
-        len_testnet_uids = 40 # TODO: Retrieve dynamically for testnet -> len(self.metagraph.n) 
-        self.logger.info(f"range(len_testnet_uids): {range(len_testnet_uids)}")
-        for i in range(len_testnet_uids):
+        # len_testnet_uids = 40 # TODO: Retrieve dynamically for testnet -> len(self.metagraph.n) 
+        # self.logger.info(f"range(len_testnet_uids): {range(len_testnet_uids)}")
+        for i in range(self.metagraph_n):
             self.logger.info(i)
             self.save_gradient(self.global_progress.epoch, i)
         self.logger.info("Finished miner gradient download loop")
