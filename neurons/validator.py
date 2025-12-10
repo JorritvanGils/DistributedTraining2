@@ -86,18 +86,29 @@ from distributed_training.validator.reward import update_total_scores
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
+        self.logger.info(f"self.current_block: {self.current_block} (before set_current_block_across_ranks())")
         self.set_current_block_across_ranks()
+        self.logger.info(f"self.current_block: {self.current_block} (after set_current_block_across_ranks())")
+
         self._update_wandb_project()
         self._init_basic_components()
+        self.logger.info(f"self.device: {self.device}")
+        self.logger.info(f"self.dht.peer_id: {self.dht.peer_id}")
+        self.logger.info(f"self.local_progress.model_dump(): {self.local_progress.model_dump()}") # LocalTrainingProgress pydantic
+        self.logger.info(f"self.global_progress.model_dump(): {self.global_progress.model_dump()}") # GlobalTrainingProgress pydantic
+
         self._init_model_components()
         self._init_network_components()
         self._init_uid_components()
         self._load_gradient_compressors()
         if self.master:
             map_uid_to_peerid(self)
+            self.logger.info(f"self.uid_tracker: {self.uid_tracker} (from map_uid_to_peerid())")
+        self.logger.info("Starting miner gradient download loop")
         for i in range(256):
             self.logger.info(i)
             self.save_gradient(self.global_progress.epoch, i)
+        self.logger.info("Finished miner gradient download loop")
         if self.master:
             np.save(
                 os.path.join(
@@ -120,26 +131,31 @@ class Validator(BaseValidatorNeuron):
 
     def save_gradient(self, epoch, uid):
         try:
+            self.logger.info(f"[save_grad] uid={uid} epoch={epoch}")
+
             success_status = 1
             prefix = f"epoch-{epoch}/"
             destination_dir = os.path.join(os.getcwd(), "gradients", prefix)
             final_name = f"uid-{uid:03d}-epoch-{epoch}.pt"
             final_path = os.path.join(destination_dir, final_name)
 
+            self.logger.info("[save_grad] creds check")
             if self.master and (
-                self.uid_tracker[uid].train.account_id
-                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                or self.uid_tracker[uid].train.access_key_id
-                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                or self.uid_tracker[uid].train.secret_access_key
-                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                self.uid_tracker[uid].train.account_id == "x"*32
+                or self.uid_tracker[uid].train.access_key_id == "x"*32
+                or self.uid_tracker[uid].train.secret_access_key == "x"*64
             ):
                 success_status = 0
 
             if not gloabl_dist_checkpoint(success_status, self.gloo_group):
+                self.logger.info("[save_grad] checkpoint failed")
                 return
 
+            self.logger.info("[save_grad] global_dist_checkpoint passed")
+
             r2 = get_r2_client(self, uid, donwload_on_all_ranks=True)
+            self.logger.info("[save_grad] got r2 client")
+
             gradient_path = r2_download(
                 self,
                 r2=r2,
@@ -149,21 +165,23 @@ class Validator(BaseValidatorNeuron):
                 run_on_all_ranks=False,
                 destination=destination_dir,
             )
+            self.logger.info("[save_grad] r2_download returned")
+
             if self.master:
                 os.makedirs(destination_dir, exist_ok=True)
-                # if r2_download returned the directory, assume file is "<dest_dir>/gradients.pt"
                 src = (
                     gradient_path
                     if gradient_path.endswith(".pt")
                     else os.path.join(destination_dir, "gradients.pt")
                 )
-                if os.path.abspath(src) != os.path.abspath(final_path):
-                    os.replace(src, final_path)  # atomic on POSIX
+                self.logger.info(f"[save_grad] src={src}")
+                os.replace(src, final_path)
 
-            gradient_path = final_path
+            self.logger.info(f"[save_grad] done for uid={uid}")
         except Exception as e:
-            self.logger.info(f"Failed to test gradients with error {e}")
+            self.logger.info(f"[save_grad] error={e}")
         finally:
+            self.logger.info(f"[save_grad] Reached 'finally'")
             dist.barrier()
 
     def _update_wandb_project(self):
