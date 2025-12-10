@@ -110,10 +110,12 @@ class Validator(BaseValidatorNeuron):
         if self.master:
             map_uid_to_peerid(self)
             self.logger.info(f"self.uid_tracker.keys(): {self.uid_tracker.keys()} (from map_uid_to_peerid())")
+            self.logger.info(f"self.metagraph: {self.metagraph}")
+            self.logger.info(f"self.metagraph.n: {self.metagraph.n}")
+        
         self.logger.info("Starting miner gradient download loop")
 
-        self.logger.info(f"self.metagraph: {self.metagraph}")
-        self.logger.info(f"self.metagraph.n: {self.metagraph.n}")
+
 
 
 
