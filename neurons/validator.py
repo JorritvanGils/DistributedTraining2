@@ -121,8 +121,6 @@ class Validator(BaseValidatorNeuron):
 
         dist.broadcast(metagraph_n_tensor, src=0, group=self.gloo_group)
         self.metagraph_n = metagraph_n_tensor[0].item()
-    
-        self.logger.info(f"All ranks: self.metagraph_n = {self.metagraph_n}")
 
         for i in range(self.metagraph_n):
             self.logger.info(i)
