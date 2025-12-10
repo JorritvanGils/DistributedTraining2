@@ -112,6 +112,11 @@ class Validator(BaseValidatorNeuron):
             self.logger.info(f"self.uid_tracker.keys(): {self.uid_tracker.keys()} (from map_uid_to_peerid())")
         self.logger.info("Starting miner gradient download loop")
 
+        self.logger.info(f"self.metagraph: {self.metagraph}")
+        self.logger.info(f"self.metagraph.n: {self.metagraph.n}")
+
+
+
         len_testnet_uids = 40 # TODO: Retrieve dynamically for testnet -> len(self.metagraph.n) 
         self.logger.info(f"range(len_testnet_uids): {range(len_testnet_uids)}")
         for i in range(len_testnet_uids):
