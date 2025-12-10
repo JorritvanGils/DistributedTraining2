@@ -86,7 +86,7 @@ from distributed_training.validator.reward import update_total_scores
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-        
+
         if hasattr(self, "current_block"):
             self.logger.info(
                 f"self.current_block: {self.current_block} (before set_current_block_across_ranks())"
@@ -98,7 +98,8 @@ class Validator(BaseValidatorNeuron):
         self._update_wandb_project()
         self._init_basic_components()
         self.logger.info(f"self.device: {self.device}")
-        self.logger.info(f"self.dht.peer_id: {self.dht.peer_id}")
+        if self.master:
+            self.logger.info(f"self.dht.peer_id: {self.dht.peer_id}")
         self.logger.info(f"self.local_progress.model_dump(): {self.local_progress.model_dump()}") # LocalTrainingProgress pydantic
         self.logger.info(f"self.global_progress.model_dump(): {self.global_progress.model_dump()}") # GlobalTrainingProgress pydantic
 
