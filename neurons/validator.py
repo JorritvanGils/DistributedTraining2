@@ -140,31 +140,26 @@ class Validator(BaseValidatorNeuron):
 
     def save_gradient(self, epoch, uid):
         try:
-            self.logger.info(f"[save_grad] uid={uid} epoch={epoch}")
-
             success_status = 1
             prefix = f"epoch-{epoch}/"
             destination_dir = os.path.join(os.getcwd(), "gradients", prefix)
             final_name = f"uid-{uid:03d}-epoch-{epoch}.pt"
             final_path = os.path.join(destination_dir, final_name)
 
-            self.logger.info("[save_grad] creds check")
             if self.master and (
-                self.uid_tracker[uid].train.account_id == "x"*32
-                or self.uid_tracker[uid].train.access_key_id == "x"*32
-                or self.uid_tracker[uid].train.secret_access_key == "x"*64
+                self.uid_tracker[uid].train.account_id
+                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                or self.uid_tracker[uid].train.access_key_id
+                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                or self.uid_tracker[uid].train.secret_access_key
+                == "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             ):
                 success_status = 0
 
             if not gloabl_dist_checkpoint(success_status, self.gloo_group):
-                self.logger.info("[save_grad] checkpoint failed")
                 return
 
-            self.logger.info("[save_grad] global_dist_checkpoint passed")
-
             r2 = get_r2_client(self, uid, donwload_on_all_ranks=True)
-            self.logger.info("[save_grad] got r2 client")
-
             gradient_path = r2_download(
                 self,
                 r2=r2,
@@ -174,28 +169,22 @@ class Validator(BaseValidatorNeuron):
                 run_on_all_ranks=False,
                 destination=destination_dir,
             )
-            self.logger.info("[save_grad] r2_download returned")
-
             if self.master:
                 os.makedirs(destination_dir, exist_ok=True)
+                # if r2_download returned the directory, assume file is "<dest_dir>/gradients.pt"
                 src = (
                     gradient_path
                     if gradient_path.endswith(".pt")
                     else os.path.join(destination_dir, "gradients.pt")
                 )
-                self.logger.info(f"[save_grad] src={src}")
-                os.replace(src, final_path)
+                if os.path.abspath(src) != os.path.abspath(final_path):
+                    os.replace(src, final_path)  # atomic on POSIX
 
-            self.logger.info(f"[save_grad] done for uid={uid}")
+            gradient_path = final_path
         except Exception as e:
-            self.logger.info(f"[save_grad] error={e}")
+            self.logger.info(f"Failed to test gradients with error {e}")
         finally:
-            self.logger.info(f"[save_grad] finally before barrier uid={uid}")
-            try:
-                dist.barrier()
-            except Exception as b:
-                self.logger.info(f"[save_grad] barrier failed: {b}")
-                raise
+            dist.barrier()
 
     def _update_wandb_project(self):
         suffix = "_validators" if self.neuron_type == "ValidatorNeuron" else "_miners"
