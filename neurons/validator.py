@@ -86,7 +86,12 @@ from distributed_training.validator.reward import update_total_scores
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-        self.logger.info(f"self.current_block: {self.current_block} (before set_current_block_across_ranks())")
+        
+        if hasattr(self, "current_block"):
+            self.logger.info(
+                f"self.current_block: {self.current_block} (before set_current_block_across_ranks())"
+            )
+
         self.set_current_block_across_ranks()
         self.logger.info(f"self.current_block: {self.current_block} (after set_current_block_across_ranks())")
 
