@@ -101,7 +101,7 @@ class Validator(BaseValidatorNeuron):
         if self.master:
             self.logger.info(f"self.dht.peer_id: {self.dht.peer_id}")
         self.logger.info(f"self.local_progress.model_dump(): {self.local_progress.model_dump()}") # LocalTrainingProgress pydantic
-        self.logger.info(f"self.global_progress.model_dump(): {self.global_progress.model_dump()}") # GlobalTrainingProgress pydantic
+        self.logger.info(f"global_progress: {vars(self.global_progress)}") # GlobalTrainingProgress NON-pydantic
 
         self._init_model_components()
         self._init_network_components()
