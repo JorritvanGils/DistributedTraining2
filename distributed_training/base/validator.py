@@ -164,6 +164,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """
         # Check that validator is registered on the network.
         self.sync()
+        self.logger.info("In run()")
 
         if self.master:
             self.logger.info(
