@@ -109,9 +109,16 @@ class Validator(BaseValidatorNeuron):
         self._load_gradient_compressors()
         if self.master:
             map_uid_to_peerid(self)
-            self.logger.info(f"self.uid_tracker: {self.uid_tracker} (from map_uid_to_peerid())")
+            self.logger.info(f"self.uid_tracker.keys(): {self.uid_tracker.keys()} (from map_uid_to_peerid())")
         self.logger.info("Starting miner gradient download loop")
-        for i in range(256):
+
+        self.logger.info(f"len(self.metagraph.n): {len(self.metagraph.n)}")
+        self.logger.info(f"range(self.metagraph.n): {list(range(self.metagraph.n))}")
+
+        # we should find a way to extract the number of uids from testnet. Untill then we just do:
+        len_testnet_uids = 40
+
+        for i in range(len_testnet_uids):
             self.logger.info(i)
             self.save_gradient(self.global_progress.epoch, i)
         self.logger.info("Finished miner gradient download loop")
