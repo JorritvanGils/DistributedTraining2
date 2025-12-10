@@ -95,7 +95,10 @@ class Validator(BaseValidatorNeuron):
         self._load_gradient_compressors()
         if self.master:
             map_uid_to_peerid(self)
-        for i in range(256):
+
+        len_testnet_uids = 40 # Temp Fix
+        for i in range(len_testnet_uids):
+        # for i in range(256):
             self.logger.info(i)
             self.save_gradient(self.global_progress.epoch, i)
         if self.master:
