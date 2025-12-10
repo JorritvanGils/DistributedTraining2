@@ -187,8 +187,12 @@ class Validator(BaseValidatorNeuron):
         except Exception as e:
             self.logger.info(f"[save_grad] error={e}")
         finally:
-            self.logger.info(f"[save_grad] Reached 'finally'")
-            dist.barrier()
+            self.logger.info(f"[save_grad] finally before barrier uid={uid}")
+            try:
+                dist.barrier()
+            except Exception as b:
+                self.logger.info(f"[save_grad] barrier failed: {b}")
+                raise
 
     def _update_wandb_project(self):
         suffix = "_validators" if self.neuron_type == "ValidatorNeuron" else "_miners"
