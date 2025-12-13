@@ -51,7 +51,7 @@ class BatchLoader:
             self.buffer = rng.sample(self.buffer, target_size)
         
         if self.debug:
-            self.logger.debug(f"Buffer reduced from {original_size} to {target_size} tokens ({method})")
+            print(f"Buffer reduced from {original_size} to {target_size} tokens ({method})")
 
     def prepare_batches(self, batch_size=None, sequence_length=None, device="cpu"):
         batch_size = batch_size or self.batch_size
@@ -74,7 +74,7 @@ class BatchLoader:
 
         # if self.debug and num_batches > 0:
         #     first_batch = data[:batch_size]
-        #     self.logger.debug("Preview tokens:", first_batch[0][:5].tolist())
+        #     print("Preview tokens:", first_batch[0][:5].tolist())
 
     def __iter__(self):
         if self._data is None:
@@ -129,7 +129,7 @@ class DatasetLoader(BatchLoader):
         
         self.debug = debug
         self.randomness = randomness
-        # self.debug and self.logger.debug(f"self.max_configs: {self.max_configs}, self.max_shards: {self.max_shards}, self.max_row_groups: {self.max_row_groups}, self.max_rows_per_group: {self.max_rows_per_group}")
+        # self.debug and print(f"self.max_configs: {self.max_configs}, self.max_shards: {self.max_shards}, self.max_row_groups: {self.max_row_groups}, self.max_rows_per_group: {self.max_rows_per_group}")
 
         def require_env(name: str) -> str:
             val = os.getenv(name)
@@ -141,10 +141,10 @@ class DatasetLoader(BatchLoader):
         self.ACCOUNT_ID  = require_env(f"R2_ACCOUNT_ID")
         self.ACCESS_KEY  = require_env(f"R2_ADMIN_ACCESS_KEY_ID")
         self.SECRET_KEY  = require_env(f"R2_ADMIN_SECRET_ACCESS_KEY")
-        # self.logger.debug(f"self.BUCKET: {self.BUCKET}")
-        # self.logger.debug(f"self.ACCOUNT_ID: {self.ACCOUNT_ID}")
-        # self.logger.debug(f"self.ACCESS_KEY: {self.ACCESS_KEY}")
-        # self.logger.debug(f"self.SECRET_KEY: {self.SECRET_KEY}")
+        # print(f"self.BUCKET: {self.BUCKET}")
+        # print(f"self.ACCOUNT_ID: {self.ACCOUNT_ID}")
+        # print(f"self.ACCESS_KEY: {self.ACCESS_KEY}")
+        # print(f"self.SECRET_KEY: {self.SECRET_KEY}")
 
         self.DATASET = "HuggingFaceFW_fineweb-edu-score-2"
         self.META_NAME = "_metadata.yaml"
@@ -167,7 +167,7 @@ class DatasetLoader(BatchLoader):
         self.total_row_groups_loaded = 0
         self.total_rows_loaded = 0
 
-        self.debug and self.logger.debug(f"DatasetLoader initialized with UID={self.uid}, block={self.current_block}")
+        self.debug and print(f"DatasetLoader initialized with UID={self.uid}, block={self.current_block}")
 
     def generate_rng(self, context: str = "") -> random.Random:
         """
@@ -181,14 +181,14 @@ class DatasetLoader(BatchLoader):
         rng = self.generate_rng("config_selection")
         n = min(len(configs), self.max_configs)
         indexes = rng.sample(range(len(configs)), n)
-        self.debug and self.logger.debug(f"Config idxs chosen: {indexes}")
+        self.debug and print(f"Config idxs chosen: {indexes}")
         return [configs[i] for i in indexes]
 
     def select_shards(self, shards, context="shard_selection"):
         rng = self.generate_rng(context)
         n = min(len(shards), self.max_shards)
         indexes = rng.sample(range(len(shards)), n)
-        self.debug and self.logger.debug(f"Shard idxs chosen: {indexes}")
+        self.debug and print(f"Shard idxs chosen: {indexes}")
         return [shards[i] for i in indexes]
 
     def select_row_groups(self, num_row_groups, context="row_group"):
@@ -218,8 +218,8 @@ class DatasetLoader(BatchLoader):
 
         end_time = time.perf_counter()
         if self.debug:
-            self.logger.debug(f"Buffer length: {len(self.buffer)}")
-            self.logger.debug(f"load_bucket_data_to_buffer took {end_time - start_time:.2f}s\n")
+            print(f"Buffer length: {len(self.buffer)}")
+            print(f"load_bucket_data_to_buffer took {end_time - start_time:.2f}s\n")
 
         return self.buffer
 
@@ -253,7 +253,7 @@ class DatasetLoader(BatchLoader):
             selected = self.select_shards(shards, context=f"shard_{shards[0] if shards else ''}")
             all_shards.extend(selected)
 
-        # self.debug and self.logger.debug(f"All_shards: {all_shards}\n")
+        # self.debug and print(f"All_shards: {all_shards}\n")
         return all_shards          
 
     async def get_configs(self):
@@ -283,7 +283,7 @@ class DatasetLoader(BatchLoader):
         try:
             reader = await asyncio.to_thread(pq.ParquetFile, f"s3://{shard_path}", filesystem=self.fs)
         except Exception as e:
-            self.logger.debug(f"Failed to open shard {shard_path}: {e}")
+            print(f"Failed to open shard {shard_path}: {e}")
             return buffer
 
         num_row_groups = reader.num_row_groups
