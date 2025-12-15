@@ -168,7 +168,16 @@ class Miner(BaseMinerNeuron):
             try:
                 self.sync()
             except Exception as e:
-                self.logger.debug(f"Error {e} when trying to sync")
+                self.logger.debug(f"[block_list] sync error: {e}")
+
+            self.logger.debug(
+                f"[block_list] watcher | "
+                f"current_block={self.current_block} "
+                f"starting_block={self.starting_block} "
+                f"last_allreduce_block={self.last_allreduce_block} "
+                f"block_list={list(self.model.config.block_list)}"
+            )
+
             if not self.all_reduce_success_status:
                 wait_time = (
                     self.allreduce_timeout
@@ -178,54 +187,42 @@ class Miner(BaseMinerNeuron):
                 )
                 if wait_time > 0:
                     self.logger.info(
-                        f"Waiting {int(wait_time)} seconds until validator complete the all_reduce"
+                        f"Waiting {int(wait_time)}s for validator all_reduce"
                     )
-                    # Wait for the master validator to upload new global model
                     time.sleep(wait_time)
-                # Check if master validator has failed to all_reduce
+
                 self.global_progress.epoch = get_progress(self, "global")[0]
+                self.logger.debug(
+                    f"[block_list] reload_state_event set (all_reduce failed)"
+                )
                 self.reload_state_event.set()
-            # elif (
-            #     self.local_progress.epoch == 0
-            #     and (self.local_progress.inner_step % 10 == 0)
-            # ) or (
-            #     self.local_progress.epoch != 0
-            #     and (self.local_progress.inner_step % 2 == 0)
-            # ):
-            #     # ) and (self.all_reduce_flag != 1):
-            #     #     # elif (datetime.datetime.now().minute % 30 == 0) and (
-            #     #     #     self.all_reduce_flag != 1
-            #     #     # ):
-            #     self.loop.run_until_complete(
-            #         self.all_reduce(
-            #             distributed_training.protocol.AllReduce(
-            #                 min_group_size=self.config.neuron.min_group_size,
-            #                 timeout=420,
-            #             )
-            #         )
-            #     )
-            #     time.sleep(self.allreduce_timeout + self.upload_state_duration)
+
             else:
-                # TODO convert this to a listener
                 if (self.last_allreduce_block is not None) and (
                     (time.perf_counter() - self.all_reduce_start_time)
                     > (self.allreduce_timeout + self.upload_state_duration)
                 ):
+                    self.logger.debug(
+                        "[block_list] reload_state_event set (timeout after allreduce)"
+                    )
                     self.reload_state_event.set()
+
                 elif (self.last_allreduce_block is None) and (
                     self.current_block - self.starting_block > 25
                 ):
+                    self.logger.debug(
+                        "[block_list] reload_state_event set (no allreduce after 25 blocks)"
+                    )
                     self.reload_state_event.set()
+
             time.sleep(10)
 
     def maybe_sync_and_reload(self):
         if not hasattr(self, "gloo_group"):
             return
 
-        # This runs on the training/FSDP thread only.
         torch.cuda.set_device(self.local_rank)
 
-        # Rank 0 publishes sync_flag; others send 0.
         sync_flag = (
             1 if (self.local_rank == 0 and self.reload_state_event.is_set()) else 0
         )
@@ -236,14 +233,16 @@ class Miner(BaseMinerNeuron):
         dist.broadcast(all_reduce_flag_tensor, src=0, group=self.gloo_group)
 
         if (sync.item() == 0) and (all_reduce_flag_tensor == 0):
-            return  # nothing to do
-        else:
-            self.reload_state_event.clear()
+            return
 
-        # Reload on ALL ranks (simplest + avoids param rebroadcast complexities).
-        # (If you truly want only rank 0 to load, you must then broadcast params,
-        # which is more invasive.)
-        self.logger.debug("Sync Reload Begin")
+        self.logger.debug(
+            f"[block_list] maybe_sync_and_reload triggered | "
+            f"sync={sync.item()} "
+            f"all_reduce_flag={all_reduce_flag_tensor.item()} "
+            f"block_list(before)={list(self.model.config.block_list)}"
+        )
+
+        self.reload_state_event.clear()
 
         if all_reduce_flag_tensor == 1:
             self.loop.run_until_complete(
@@ -254,26 +253,31 @@ class Miner(BaseMinerNeuron):
                     )
                 )
             )
+
         elif not self.all_reduce_success_status:
             block_list = self.model.config.block_list
+            self.logger.debug(
+                f"[block_list] loading state | preserved_block_list={list(block_list)}"
+            )
+
             if self.local_progress.epoch > self.global_progress.epoch:
-                self.logger.info(
-                    f"Local Epoch {self.local_progress.epoch} Ahead Of Global Epoch {self.global_progress.epoch}. Loading Latest Model State."
-                )
-                load_state_from_peer(
-                    self,
-                    epoch=self.global_progress.epoch,
-                )
+                load_state_from_peer(self, epoch=self.global_progress.epoch)
             else:
-                load_state_from_peer(
-                    self,
-                    uid=self.uid,
-                    epoch=self.global_progress.epoch,
-                )
+                load_state_from_peer(self, uid=self.uid, epoch=self.global_progress.epoch)
+
             self.model.config.block_list = block_list
+            self.logger.debug(
+                f"[block_list] restored after load_state | "
+                f"{list(self.model.config.block_list)}"
+            )
+
             self.resume_training()
             self.all_reduce_success_status = True
+
         else:
+            self.logger.debug(
+                f"[block_list] normal reload | last_allreduce_block={self.last_allreduce_block}"
+            )
             if self.last_allreduce_block is not None:
                 self.load_state(reset_last_allreduce_block=True)
             else:
@@ -1184,29 +1188,29 @@ class Miner(BaseMinerNeuron):
             )
 
     def _training_worker(self):
-        """Worker function that runs in the ThreadPoolExecutor"""
-
         asyncio.set_event_loop(self.training_loop)
 
         while not self.stop_event.is_set():
             try:
-                # Wait if training is paused
                 self.training_active.wait()
 
-                self.logger.debug(":pages: Fetching fineweb-edu pages")
                 dataset = self.training_loop.run_until_complete(
                     self.fetch_training_data()
                 )
 
-                # Wait if training is paused
                 self.training_active.wait()
 
                 if self.master:
                     self.model.config.block_list.append(self.current_block)
+                    self.logger.debug(
+                        f"[block_list] appended block={self.current_block} | "
+                        f"block_list={list(self.model.config.block_list)}"
+                    )
 
                 self._process_training_batch(dataset)
+
             except Exception as e:
-                self.logger.warning(f"Training Loop Failed with error: {e}")
+                self.logger.warning(f"Training loop error: {e}")
                 self.training_status = TrainingStatus.ERROR
                 self.training_error = str(e)
                 break
