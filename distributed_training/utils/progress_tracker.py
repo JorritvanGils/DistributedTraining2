@@ -144,7 +144,10 @@ def get_progress(
     elif (uid is not None) and (uid != self.master_uid):
         bucket_name = f"{self.config.neuron.global_model_name}-{uid:03d}"
     elif (local_or_global == "global") or (uid == self.master_uid):
+        self.logger.info("we're here")
         bucket_name = self.config.neuron.global_model_name
+
+    self.logger.info(f"Using bucket_name: {bucket_name}")
 
     try:
         if uid is not None:
