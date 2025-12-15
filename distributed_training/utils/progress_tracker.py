@@ -135,6 +135,8 @@ def get_progress(
 ):
     # local_or_global is used for miners
     # uid is used for validators to cycle through progress of different uids
+    self.logger.info("get_progress()")
+    self.logger.info(f"Parameters - local_or_global: {local_or_global}, bucket_name: {bucket_name}, uid: {uid}, epoch: {epoch}, donwload_on_all_ranks: {donwload_on_all_ranks}")
     if (local_or_global != "global") and (bucket_name is None) and (uid is None):
         bucket_name = self.config.r2.bucket_name
     elif (local_or_global != "global") and (uid == self.master_uid):
