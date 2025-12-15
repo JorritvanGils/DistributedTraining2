@@ -116,6 +116,9 @@ async def forward(self):
 
                 min_sample_size = self.config.neuron.min_group_size * 2
                 self.miner_uids = []
+                
+                self.miner_uids = [self.uid] # Test Hack
+
                 # # Get active miners
                 # while len(self.miner_uids) < min_sample_size:
                 #     self.logger.info(
@@ -134,6 +137,7 @@ async def forward(self):
                 #         min_sample_size > 3
                 #     ):
                 #         min_sample_size = min_sample_size - 1
+
             dist.barrier()
         else:
             # For non-master validators
