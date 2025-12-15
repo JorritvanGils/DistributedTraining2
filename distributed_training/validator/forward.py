@@ -116,24 +116,24 @@ async def forward(self):
 
                 min_sample_size = self.config.neuron.min_group_size * 2
                 self.miner_uids = []
-                # Get active miners
-                while len(self.miner_uids) < min_sample_size:
-                    self.logger.info(
-                        f"Found {len(self.miner_uids)} UIDs. Attempting to find {min_sample_size - len(self.miner_uids)} more UIDs."
-                    )
-                    self.miner_uids += (
-                        await get_random_uids(
-                            self,
-                            dendrite=self.dendrite,
-                            k=sample_size,
-                            epoch=self.local_progress.epoch,
-                        )
-                    ).tolist()
-                    self.miner_uids = list(set(self.miner_uids))
-                    if (len(self.miner_uids) < min_sample_size) and (
-                        min_sample_size > 3
-                    ):
-                        min_sample_size = min_sample_size - 1
+                # # Get active miners
+                # while len(self.miner_uids) < min_sample_size:
+                #     self.logger.info(
+                #         f"Found {len(self.miner_uids)} UIDs. Attempting to find {min_sample_size - len(self.miner_uids)} more UIDs."
+                #     )
+                #     self.miner_uids += (
+                #         await get_random_uids(
+                #             self,
+                #             dendrite=self.dendrite,
+                #             k=sample_size,
+                #             epoch=self.local_progress.epoch,
+                #         )
+                #     ).tolist()
+                #     self.miner_uids = list(set(self.miner_uids))
+                #     if (len(self.miner_uids) < min_sample_size) and (
+                #         min_sample_size > 3
+                #     ):
+                #         min_sample_size = min_sample_size - 1
             dist.barrier()
         else:
             # For non-master validators
