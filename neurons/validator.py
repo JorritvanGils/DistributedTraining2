@@ -89,6 +89,8 @@ class Validator(BaseValidatorNeuron):
         self.set_current_block_across_ranks()
         self._update_wandb_project()
         self._init_basic_components()
+        self.logger.info(f"self.local_progress.model_dump(): {self.local_progress.model_dump()}") # LocalTrainingProgress pydantic
+        self.logger.info(f"global_progress: {vars(self.global_progress)}")        
         self._init_model_components()
         self._init_network_components()
         self._init_uid_components()
@@ -488,6 +490,8 @@ class Validator(BaseValidatorNeuron):
     def get_learning_rate(self):
         learning_rate_minimum = self.learning_rate_maximum * 0.1
         # 1) linear warmup for warmup_steps
+        self.logger.info(f"self.global_progress.epoch: {self.global_progress.epoch}")
+        self.logger.info(f"self.warmup_steps: {self.warmup_steps}")
         if self.global_progress.epoch < self.warmup_steps:
             return (
                 self.learning_rate_maximum
