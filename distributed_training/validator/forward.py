@@ -68,6 +68,15 @@ async def forward(self):
         self (:obj:`bittensor.neuron.Neuron`): The neuron object which contains all the necessary state for the validator.
 
     """
+
+    self.logger.info(f"\nForward function called")
+    self.logger.info(f"self.master: {self.master}")
+    self.logger.info(f"self.config.neuron.blocks_per_allreduce: {self.config.neuron.blocks_per_allreduce}")
+    self.logger.info(f"self.config.neuron.min_group_size: {self.config.neuron.min_group_size}")
+    self.logger.info(f"self.config.neuron.master_ss58_address: {self.config.neuron.master_ss58_address}")
+    self.logger.info(f"self.config.neuron.blocks_per_allreduce: {self.config.neuron.blocks_per_allreduce}")
+    # self.logger.info(f"self.config.neuron.blocks_per_allreduce: {self.config.neuron.blocks_per_allreduce}")    
+
     if self.master:
         # Evaluate wether to run an AllReduce or validate HF miner states
         if self.step % 2 == 0:
@@ -116,7 +125,7 @@ async def forward(self):
 
                 min_sample_size = self.config.neuron.min_group_size * 2
                 self.miner_uids = []
-                
+
                 self.miner_uids = [self.uid] # Test Hack
 
                 # # Get active miners
