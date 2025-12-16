@@ -577,6 +577,8 @@ class Miner(BaseMinerNeuron):
             try:
                 self.set_current_block_across_ranks()
 
+                self.logger.debug("loading dataloader with current block: " + str(self.current_block))
+
                 pages = await DatasetLoader.next_pages(
                     offset=self.current_block,
                     n_pages=5,
