@@ -570,17 +570,17 @@ class Miner(BaseMinerNeuron):
         self.training_status = TrainingStatus.RUNNING
         self.logger.info(":white_heavy_check_mark: Resuming continuous training.")
 
-    async def fetch_training_data(self):
+    async def fetch_training_data(self, block: int):
         """Async function to fetch training data"""
         attempt = 0
         while attempt < self.retry_limit:
             try:
                 self.set_current_block_across_ranks()
 
-                self.logger.debug("loading dataloader with current block: " + str(self.current_block))
+                self.logger.debug("loading dataloader with block: " + str(block))
 
                 pages = await DatasetLoader.next_pages(
-                    offset=self.current_block,
+                    offset=block,
                     n_pages=5,
                     seed=self.uid + self.local_rank,
                 )
@@ -1196,16 +1196,20 @@ class Miner(BaseMinerNeuron):
             try:
                 self.training_active.wait()
 
+                block_at_start = self.current_block 
+                self.logger.debug(f"block_at_start: {block_at_start}")
+                self.logger.debug(f"self.model.config.block_list: {self.model.config.block_list}")                
+
                 dataset = self.training_loop.run_until_complete(
-                    self.fetch_training_data()
+                    self.fetch_training_data(block_at_start)
                 )
 
                 self.training_active.wait()
 
                 if self.master:
-                    self.model.config.block_list.append(self.current_block)
+                    self.model.config.block_list.append(block_at_start)
                     self.logger.debug(
-                        f"[block_list] appended block={self.current_block} | "
+                        f"[block_list] appended block={block_at_start} | "
                         f"block_list={list(self.model.config.block_list)}"
                     )
 
