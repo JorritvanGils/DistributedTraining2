@@ -170,6 +170,14 @@ class BaseNeuron(ABC):
         dist.broadcast(master_uid, src=0, group=self.gloo_group)
         self.master_uid = master_uid[0].item()
 
+        self.logger.debug("self.config.neuron.master_ss58_address: ", self.config.neuron.master_ss58_address)
+        self.logger.debug("self.metagraph.hotkeys.index(self.config.neuron.master_ss58_address): ", self.metagraph.hotkeys.index(self.config.neuron.master_ss58_address))
+        self.logger.debug("self.master_uid: ", self.master_uid)
+
+        # master_uid = torch.tensor([20]) # uncomment this to test K. tip 1. 
+
+
+
         # Setup Logging
         # setup_logging(self, config=self.config)
 
